@@ -430,7 +430,6 @@
             fileData: null,
             exposedCount: 0,
             notExposedCount: 0,
-            originalData: null,
             originalWorkbook: null
         };
 
@@ -539,7 +538,6 @@
                     state.fileData = data;
                     
                     // Sačuvaj originalne podatke za resetovanje
-                    state.originalData = data;
                     state.originalWorkbook = XLSX.read(data, {type: 'array'});
                     
                     // Prikaz informacija o fajlu
@@ -659,9 +657,6 @@
                     const isExposed = false;
                     const isNotExposed = false;
                     
-                    if (isExposed) exposedCount++;
-                    if (isNotExposed) notExposedCount++;
-                    
                     state.articles.push({
                         rowIndex: i,
                         ean,
@@ -677,11 +672,11 @@
                         <td>${name}</td>
                         <td>${quantity}</td>
                         <td class="exposed-cell">
-                            <i class="fas ${isExposed ? 'fa-check-square exposed-check' : 'fa-square'} exposed-check" 
+                            <i class="fas fa-square exposed-check" 
                                 data-row="${i}" data-type="exposed"></i>
                         </td>
                         <td class="exposed-cell">
-                            <i class="fas ${isNotExposed ? 'fa-check-square not-exposed-check' : 'fa-square'} not-exposed-check" 
+                            <i class="fas fa-square not-exposed-check" 
                                 data-row="${i}" data-type="not-exposed"></i>
                         </td>
                     </tr>
@@ -767,31 +762,38 @@
             
             try {
                 // Ažuriraj Excel fajl sa promenama
-                const jsonData = XLSX.utils.sheet_to_json(state.sheet, {header: 1});
+                const sheetName = state.sheet;
+                const sheet = state.workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(sheet, {header: 1});
                 
-                // Prođi kroz sve artikle i ažuriraj boje
+                // Prođi kroz sve artikle i ažuriraj status
                 for (const article of state.articles) {
-                    // Postavi žutu boju za izložene
+                    const row = jsonData[article.rowIndex];
+                    if (!row) continue;
+                    
+                    // Ažuriraj status u JSON podacima
                     if (article.exposed) {
-                        if (!jsonData[article.rowIndex]) continue;
-                        jsonData[article.rowIndex][state.storeCol] = {
-                            v: jsonData[article.rowIndex][state.storeCol],
+                        row[state.storeCol] = {
+                            v: row[state.storeCol],
                             s: { fill: { fgColor: { rgb: "FFFF00" } } }
                         };
-                    }
-                    // Postavi crvenu boju za neizložene
-                    else if (article.notExposed) {
-                        if (!jsonData[article.rowIndex]) continue;
-                        jsonData[article.rowIndex][state.storeCol] = {
-                            v: jsonData[article.rowIndex][state.storeCol],
+                    } else if (article.notExposed) {
+                        row[state.storeCol] = {
+                            v: row[state.storeCol],
                             s: { fill: { fgColor: { rgb: "FF0000" } } }
+                        };
+                    } else {
+                        // Ako nema statusa, resetuj boju
+                        row[state.storeCol] = {
+                            v: row[state.storeCol],
+                            s: { fill: { fgColor: { rgb: "FFFFFF" } } }
                         };
                     }
                 }
                 
                 // Kreiraj novi sheet sa ažuriranim podacima
                 const newSheet = XLSX.utils.aoa_to_sheet(jsonData);
-                state.workbook.Sheets[state.sheet] = newSheet;
+                state.workbook.Sheets[sheetName] = newSheet;
                 
                 // Konvertuj workbook u binarni format
                 const wbout = XLSX.write(state.workbook, {bookType:'xlsx', type:'array'});
@@ -803,7 +805,7 @@
                 // Kreiraj link za preuzimanje
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = state.fileName.replace('.xlsx', '_updated.xlsx') || 'updated_file.xlsx';
+                a.download = state.fileName;
                 document.body.appendChild(a);
                 a.click();
                 
@@ -813,7 +815,7 @@
                     window.URL.revokeObjectURL(url);
                 }, 100);
                 
-                // Log changes
+                // Prikaži uspešan upis
                 elements.modalExposed.textContent = state.exposedCount;
                 elements.modalNotExposed.textContent = state.notExposedCount;
                 elements.modalTotal.textContent = state.exposedCount + state.notExposedCount;
@@ -844,7 +846,7 @@
                 // Kreiraj link za preuzimanje
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = state.fileName || 'excel_file.xlsx';
+                a.download = state.fileName;
                 document.body.appendChild(a);
                 a.click();
                 
@@ -862,7 +864,7 @@
 
         // Resetuje sve promene na originalno stanje
         function resetChanges() {
-            if (!state.originalData) {
+            if (!state.originalWorkbook) {
                 alert('Nema originalnih podataka za resetovanje');
                 return;
             }
@@ -873,8 +875,7 @@
                 if (modal) modal.hide();
                 
                 // Vrati na originalne podatke
-                state.workbook = XLSX.read(state.originalData, {type: 'array'});
-                state.fileData = state.originalData;
+                state.workbook = XLSX.read(XLSX.write(state.originalWorkbook, {type: 'array'}), {type: 'array'});
                 
                 // Ponovo učitaj trenutno selektovani sheet
                 const currentSheet = elements.sheetSelect.value;
@@ -921,7 +922,6 @@
             state.articles = [];
             state.fileName = '';
             state.fileData = null;
-            state.originalData = null;
             state.originalWorkbook = null;
             
             elements.fileInput.value = '';
