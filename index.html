@@ -430,7 +430,8 @@
             fileData: null,
             exposedCount: 0,
             notExposedCount: 0,
-            originalData: null // Čuva originalno stanje pre izmena
+            originalData: null,
+            originalWorkbook: null
         };
 
         // DOM Elementi
@@ -539,6 +540,7 @@
                     
                     // Sačuvaj originalne podatke za resetovanje
                     state.originalData = data;
+                    state.originalWorkbook = XLSX.read(data, {type: 'array'});
                     
                     // Prikaz informacija o fajlu
                     elements.fileName.textContent = file.name;
@@ -653,9 +655,9 @@
                     // Preskoči redove bez EAN-a ili količine
                     if (!ean || !quantity || isNaN(quantity)) continue;
                     
-                    // Simulacija statusa (u realnoj aplikaciji bi se ovo čitalo iz fajla)
-                    const isExposed = Math.random() > 0.7;
-                    const isNotExposed = Math.random() > 0.85;
+                    // Statusi se postavljaju na false po defaultu
+                    const isExposed = false;
+                    const isNotExposed = false;
                     
                     if (isExposed) exposedCount++;
                     if (isNotExposed) notExposedCount++;
@@ -758,24 +760,104 @@
         }
 
         function saveChanges() {
-            // U realnoj aplikaciji, ovde bi se ažurirao Excel fajl
-            // sa promenama iz state.articles
+            if (!state.fileName || !state.workbook || !state.sheet || !state.storeCol) {
+                alert('Niste izabrali sve potrebne opcije');
+                return;
+            }
             
-            // Simulacija uspešnog čuvanja
-            elements.modalExposed.textContent = state.exposedCount;
-            elements.modalNotExposed.textContent = state.notExposedCount;
-            elements.modalTotal.textContent = state.exposedCount + state.notExposedCount;
-            
-            const modal = new bootstrap.Modal(document.getElementById('successModal'));
-            modal.show();
-            
-            // U realnoj aplikaciji, ovde bi se ažurirao state.fileData
-            // sa promenama i omogućilo preuzimanje
+            try {
+                // Ažuriraj Excel fajl sa promenama
+                const jsonData = XLSX.utils.sheet_to_json(state.sheet, {header: 1});
+                
+                // Prođi kroz sve artikle i ažuriraj boje
+                for (const article of state.articles) {
+                    // Postavi žutu boju za izložene
+                    if (article.exposed) {
+                        if (!jsonData[article.rowIndex]) continue;
+                        jsonData[article.rowIndex][state.storeCol] = {
+                            v: jsonData[article.rowIndex][state.storeCol],
+                            s: { fill: { fgColor: { rgb: "FFFF00" } } }
+                        };
+                    }
+                    // Postavi crvenu boju za neizložene
+                    else if (article.notExposed) {
+                        if (!jsonData[article.rowIndex]) continue;
+                        jsonData[article.rowIndex][state.storeCol] = {
+                            v: jsonData[article.rowIndex][state.storeCol],
+                            s: { fill: { fgColor: { rgb: "FF0000" } } }
+                        };
+                    }
+                }
+                
+                // Kreiraj novi sheet sa ažuriranim podacima
+                const newSheet = XLSX.utils.aoa_to_sheet(jsonData);
+                state.workbook.Sheets[state.sheet] = newSheet;
+                
+                // Konvertuj workbook u binarni format
+                const wbout = XLSX.write(state.workbook, {bookType:'xlsx', type:'array'});
+                
+                // Kreiraj Blob za preuzimanje
+                const blob = new Blob([wbout], {type: 'application/octet-stream'});
+                const url = URL.createObjectURL(blob);
+                
+                // Kreiraj link za preuzimanje
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = state.fileName.replace('.xlsx', '_updated.xlsx') || 'updated_file.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                
+                // Očisti
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                }, 100);
+                
+                // Log changes
+                elements.modalExposed.textContent = state.exposedCount;
+                elements.modalNotExposed.textContent = state.notExposedCount;
+                elements.modalTotal.textContent = state.exposedCount + state.notExposedCount;
+                
+                const modal = new bootstrap.Modal(document.getElementById('successModal'));
+                modal.show();
+                
+            } catch (error) {
+                console.error('Greška pri čuvanju promena:', error);
+                alert('Došlo je do greške pri čuvanju promena: ' + error.message);
+            }
         }
 
         function downloadFile() {
-            // U realnoj aplikaciji, ovde bi se preuzimao ažurirani fajl
-            alert(`Fajl "${state.fileName}" je spreman za preuzimanje. U realnoj aplikaciji, ovde bi se preuzimao ažurirani fajl.`);
+            if (!state.workbook) {
+                alert('Nema podataka za preuzimanje');
+                return;
+            }
+            
+            try {
+                // Konvertuj workbook u binarni format
+                const wbout = XLSX.write(state.workbook, {bookType:'xlsx', type:'array'});
+                
+                // Kreiraj Blob za preuzimanje
+                const blob = new Blob([wbout], {type: 'application/octet-stream'});
+                const url = URL.createObjectURL(blob);
+                
+                // Kreiraj link za preuzimanje
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = state.fileName || 'excel_file.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                
+                // Očisti
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                }, 100);
+                
+            } catch (error) {
+                console.error('Greška pri preuzimanju fajla:', error);
+                alert('Došlo je do greške pri preuzimanju fajla.');
+            }
         }
 
         // Resetuje sve promene na originalno stanje
@@ -790,8 +872,9 @@
                 const modal = bootstrap.Modal.getInstance(document.getElementById('resetModal'));
                 if (modal) modal.hide();
                 
-                // Resetuj workbook na originalno stanje
+                // Vrati na originalne podatke
                 state.workbook = XLSX.read(state.originalData, {type: 'array'});
+                state.fileData = state.originalData;
                 
                 // Ponovo učitaj trenutno selektovani sheet
                 const currentSheet = elements.sheetSelect.value;
@@ -839,6 +922,7 @@
             state.fileName = '';
             state.fileData = null;
             state.originalData = null;
+            state.originalWorkbook = null;
             
             elements.fileInput.value = '';
             elements.fileInfo.style.display = 'none';
