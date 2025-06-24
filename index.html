@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Artikal Provera</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            min-height: 100vh;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .app-container {
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .app-header {
+            background: linear-gradient(90deg, #1a2980, #26d0ce);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        .app-logo {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        .app-title {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin: 0;
+        }
+        .app-subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+        .main-content {
+            padding: 25px;
+        }
+        .file-upload-card {
+            background: linear-gradient(120deg, #e0c3fc 0%, #8ec5fc 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        .upload-area {
+            border: 3px dashed #6f42c1;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-area:hover {
+            background-color: rgba(255, 255, 255, 0.9);
+            transform: translateY(-3px);
+        }
+        .upload-icon {
+            font-size: 3rem;
+            color: #6f42c1;
+            margin-bottom: 15px;
+        }
+        .file-info {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            display: none;
+        }
+        .selection-card {
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            margin-bottom: 25px;
+        }
+        .articles-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            background-color: white;
+        }
+        .articles-table th {
+            background: linear-gradient(90deg, #4b6cb7, #182848);
+            color: white;
+            padding: 15px 10px;
+            text-align: left;
+        }
+        .articles-table td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #eaeaea;
+        }
+        .articles-table tr:hover td {
+            background-color: #f5f9ff;
+        }
+        .exposed-cell {
+            text-align: center;
+        }
+        .exposed-check {
+            color: #28a745;
+            cursor: pointer;
+            font-size: 1.3rem;
+        }
+        .not-exposed-check {
+            color: #dc3545;
+            cursor: pointer;
+            font-size: 1.3rem;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .exposed-status {
+            background-color: #ffc107;
+        }
+        .not-exposed-status {
+            background-color: #dc3545;
+        }
+        .btn-primary {
+            background: linear-gradient(90deg, #1a2980, #26d0ce);
+            border: none;
+            padding: 10px 25px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        .btn-download {
+            background: linear-gradient(90deg, #11998e, #38ef7d);
+            border: none;
+            padding: 10px 25px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .btn-download:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .stats-card {
+            background: linear-gradient(120deg, #a1c4fd 0%, #c2e9fb 100%);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+        }
+        .stats-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #1a2980;
+        }
+        .stats-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #0d6efd;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #6c757d;
+            font-size: 0.9rem;
+            border-top: 1px solid #eaeaea;
+            margin-top: 20px;
+        }
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .badge-exposed {
+            background-color: rgba(255, 193, 7, 0.2);
+            color: #856404;
+        }
+        .badge-not-exposed {
+            background-color: rgba(220, 53, 69, 0.2);
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="app-header">
+            <div class="app-logo">
+                <i class="fas fa-file-excel"></i>
+            </div>
+            <h1 class="app-title">Excel Artikal Provera</h1>
+            <p class="app-subtitle">Proverite status izloženosti vaših artikala</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="file-upload-card">
+                <div class="upload-area" id="drop-area">
+                    <div class="upload-icon">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                    </div>
+                    <h4>Prevucite Excel fajl ovde ili kliknite za otvaranje</h4>
+                    <p class="text-muted">Podržani formati: .xlsx, .xls</p>
+                    <button class="btn btn-lg btn-primary mt-3">
+                        <i class="fas fa-folder-open me-2"></i>Izaberite fajl
+                    </button>
+                    <input type="file" id="file-input" accept=".xlsx, .xls" style="display: none;">
+                </div>
+                <div class="file-info" id="file-info">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 id="file-name">Naziv fajla</h5>
+                            <p class="mb-0"><span id="file-size">0</span> KB | <span id="file-sheets">0</span> listova</p>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger" id="clear-file">
+                            <i class="fas fa-times me-1"></i>Obriši
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="selection-card">
+                        <h5><i class="fas fa-layer-group me-2"></i>Radni list</h5>
+                        <div class="mb-3">
+                            <select class="form-select" id="sheet-select" disabled>
+                                <option value="">Izaberite radni list</option>
+                            </select>
+                        </div>
+                        
+                        <h5><i class="fas fa-store me-2"></i>Radnja</h5>
+                        <div class="mb-3">
+                            <select class="form-select" id="store-select" disabled>
+                                <option value="">Izaberite radnju</option>
+                            </select>
+                        </div>
+                        
+                        <div class="stats-card">
+                            <div class="stats-title">Ukupno artikala</div>
+                            <div class="stats-value" id="total-articles">0</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-8">
+                    <div class="selection-card">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0"><i class="fas fa-list me-2"></i>Artikli</h5>
+                            <div>
+                                <span class="status-badge badge-exposed me-2">
+                                    <i class="fas fa-square me-1 exposed-status"></i>Izloženi
+                                </span>
+                                <span class="status-badge badge-not-exposed">
+                                    <i class="fas fa-square me-1 not-exposed-status"></i>Neizloženi
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="articles-table">
+                                <thead>
+                                    <tr>
+                                        <th>EAN</th>
+                                        <th>Naziv artikla</th>
+                                        <th>Količina</th>
+                                        <th class="exposed-cell">Izložen</th>
+                                        <th class="exposed-cell">Nije izložen</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="articles-body">
+                                    <tr>
+                                        <td colspan="5" class="no-data">
+                                            <i class="fas fa-info-circle fa-2x mb-3"></i>
+                                            <h5>Nema podataka za prikaz</h5>
+                                            <p class="text-muted">Učitajte Excel fajl i izaberite radnju</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="action-buttons">
+                            <button class="btn btn-primary" id="save-btn" disabled>
+                                <i class="fas fa-save me-2"></i>Sačuvaj promene
+                            </button>
+                            <button class="btn btn-download" id="download-btn" disabled>
+                                <i class="fas fa-download me-2"></i>Preuzmi fajl
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="stats-card">
+                                <div class="stats-title">Izloženi artikli</div>
+                                <div class="stats-value" id="exposed-count">0</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="stats-card">
+                                <div class="stats-title">Neizloženi artikli</div>
+                                <div class="stats-value" id="not-exposed-count">0</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="stats-card">
+                                <div class="stats-title">Ukupno izmenjeno</div>
+                                <div class="stats-value" id="total-changed">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Excel Artikal Provera &copy; 2023 | Sva prava zadržana</p>
+            <p class="text-muted">Web aplikacija za proveru izloženosti artikala</p>
+        </div>
+    </div>
+
+    <!-- Modal za uspešno čuvanje -->
+    <div class="modal fade" id="successModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="fas fa-check-circle me-2"></i>Uspešno sačuvano</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Promene su uspešno sačuvane u Excel fajlu.</p>
+                    <div class="alert alert-success">
+                        <p class="mb-1"><strong>Izloženi artikli:</strong> <span id="modal-exposed">0</span></p>
+                        <p class="mb-1"><strong>Neizloženi artikli:</strong> <span id="modal-not-exposed">0</span></p>
+                        <p class="mb-0"><strong>Ukupno izmenjeno:</strong> <span id="modal-total">0</span></p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" data-bs-dismiss="modal">U redu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Stanje aplikacije
+        const state = {
+            workbook: null,
+            sheet: null,
+            store: null,
+            storeCol: null,
+            articles: [],
+            fileName: '',
+            fileData: null,
+            exposedCount: 0,
+            notExposedCount: 0
+        };
+
+        // DOM Elementi
+        const elements = {
+            fileInput: document.getElementById('file-input'),
+            dropArea: document.getElementById('drop-area'),
+            fileInfo: document.getElementById('file-info'),
+            fileName: document.getElementById('file-name'),
+            fileSize: document.getElementById('file-size'),
+            fileSheets: document.getElementById('file-sheets'),
+            clearFile: document.getElementById('clear-file'),
+            sheetSelect: document.getElementById('sheet-select'),
+            storeSelect: document.getElementById('store-select'),
+            articlesBody: document.getElementById('articles-body'),
+            saveBtn: document.getElementById('save-btn'),
+            downloadBtn: document.getElementById('download-btn'),
+            totalArticles: document.getElementById('total-articles'),
+            exposedCount: document.getElementById('exposed-count'),
+            notExposedCount: document.getElementById('not-exposed-count'),
+            totalChanged: document.getElementById('total-changed'),
+            modalExposed: document.getElementById('modal-exposed'),
+            modalNotExposed: document.getElementById('modal-not-exposed'),
+            modalTotal: document.getElementById('modal-total')
+        };
+
+        // Inicijalizacija
+        document.addEventListener('DOMContentLoaded', function() {
+            // Event listeneri
+            elements.dropArea.addEventListener('click', () => elements.fileInput.click());
+            elements.fileInput.addEventListener('change', handleFileSelect);
+            elements.clearFile.addEventListener('click', resetApp);
+            elements.sheetSelect.addEventListener('change', handleSheetSelect);
+            elements.storeSelect.addEventListener('change', handleStoreSelect);
+            elements.saveBtn.addEventListener('click', saveChanges);
+            elements.downloadBtn.addEventListener('click', downloadFile);
+            
+            // Drag and drop funkcionalnost
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                elements.dropArea.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                elements.dropArea.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                elements.dropArea.addEventListener(eventName, unhighlight, false);
+            });
+            
+            elements.dropArea.addEventListener('drop', handleDrop, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        function highlight() {
+            elements.dropArea.style.backgroundColor = 'rgba(111, 66, 193, 0.1)';
+            elements.dropArea.style.borderColor = '#4b2a8a';
+        }
+
+        function unhighlight() {
+            elements.dropArea.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
+            elements.dropArea.style.borderColor = '#6f42c1';
+        }
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length) {
+                handleFiles(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            if (e.target.files.length) {
+                handleFiles(e.target.files[0]);
+            }
+        }
+
+        function handleFiles(file) {
+            if (!file.name.match(/\.(xlsx|xls)$/i)) {
+                alert('Molimo izaberite Excel fajl (.xlsx ili .xls)');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    
+                    // Ažuriranje stanja
+                    state.workbook = workbook;
+                    state.fileName = file.name;
+                    state.fileData = data;
+                    
+                    // Prikaz informacija o fajlu
+                    elements.fileName.textContent = file.name;
+                    elements.fileSize.textContent = Math.round(file.size / 1024);
+                    elements.fileSheets.textContent = workbook.SheetNames.length;
+                    elements.fileInfo.style.display = 'block';
+                    
+                    // Popunjavanje izbora listova
+                    populateSheetSelect(workbook.SheetNames);
+                    
+                    // Resetovanje drugih kontrola
+                    resetAfterFileUpload();
+                    
+                } catch (error) {
+                    console.error('Greška pri čitanju fajla:', error);
+                    alert('Došlo je do greške pri čitanju Excel fajla. Proverite da li je fajl ispravnog formata.');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function populateSheetSelect(sheetNames) {
+            elements.sheetSelect.innerHTML = '<option value="">Izaberite radni list</option>';
+            sheetNames.forEach(sheet => {
+                const option = document.createElement('option');
+                option.value = sheet;
+                option.textContent = sheet;
+                elements.sheetSelect.appendChild(option);
+            });
+            elements.sheetSelect.disabled = false;
+        }
+
+        function resetAfterFileUpload() {
+            elements.storeSelect.innerHTML = '<option value="">Izaberite radnju</option>';
+            elements.storeSelect.disabled = true;
+            elements.articlesBody.innerHTML = '<tr><td colspan="5" class="no-data"><i class="fas fa-info-circle fa-2x mb-3"></i><h5>Nema podataka za prikaz</h5><p class="text-muted">Izaberite radni list i radnju</p></td></tr>';
+            elements.saveBtn.disabled = true;
+            elements.downloadBtn.disabled = true;
+            updateCounts(0, 0, 0);
+        }
+
+        function handleSheetSelect() {
+            const sheetName = elements.sheetSelect.value;
+            if (!sheetName) return;
+            
+            try {
+                state.sheet = state.workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(state.sheet, {header: 1});
+                
+                // Pronalaženje naslova kolona (prvi red)
+                const headers = jsonData[0] || [];
+                
+                // Pronalaženje radnji (kolone koje počinju od D)
+                const stores = [];
+                for (let i = 3; i < headers.length; i++) {
+                    if (headers[i]) stores.push(headers[i]);
+                }
+                
+                // Popunjavanje izbora radnji
+                populateStoreSelect(stores);
+                
+            } catch (error) {
+                console.error('Greška pri učitavanju lista:', error);
+                alert('Došlo je do greške pri učitavanju radnog lista.');
+            }
+        }
+
+        function populateStoreSelect(stores) {
+            elements.storeSelect.innerHTML = '<option value="">Izaberite radnju</option>';
+            stores.forEach(store => {
+                const option = document.createElement('option');
+                option.value = store;
+                option.textContent = store;
+                elements.storeSelect.appendChild(option);
+            });
+            elements.storeSelect.disabled = false;
+            state.articles = [];
+            elements.articlesBody.innerHTML = '<tr><td colspan="5" class="no-data"><i class="fas fa-info-circle fa-2x mb-3"></i><h5>Nema podataka za prikaz</h5><p class="text-muted">Izaberite radnju</p></td></tr>';
+        }
+
+        function handleStoreSelect() {
+            const storeName = elements.storeSelect.value;
+            if (!storeName || !state.sheet) return;
+            
+            try {
+                const jsonData = XLSX.utils.sheet_to_json(state.sheet, {header: 1});
+                const headers = jsonData[0] || [];
+                
+                // Pronalaženje indeksa radnje
+                state.storeCol = headers.indexOf(storeName);
+                if (state.storeCol === -1) {
+                    alert('Nije pronađena izabrana radnja');
+                    return;
+                }
+                
+                // Učitavanje artikala
+                state.articles = [];
+                let exposedCount = 0;
+                let notExposedCount = 0;
+                
+                // Generisanje HTML-a za tabelu
+                let articlesHTML = '';
+                
+                // Prolazak kroz redove (počevši od drugog reda)
+                for (let i = 1; i < jsonData.length; i++) {
+                    const row = jsonData[i];
+                    const ean = row[0] || '';
+                    const name = row[1] || '';
+                    const quantity = row[state.storeCol] || '';
+                    
+                    // Preskoči redove bez EAN-a ili količine
+                    if (!ean || !quantity || isNaN(quantity)) continue;
+                    
+                    // Simulacija statusa (u realnoj aplikaciji bi se ovo čitalo iz fajla)
+                    const isExposed = Math.random() > 0.7;
+                    const isNotExposed = Math.random() > 0.85;
+                    
+                    if (isExposed) exposedCount++;
+                    if (isNotExposed) notExposedCount++;
+                    
+                    state.articles.push({
+                        rowIndex: i,
+                        ean,
+                        name,
+                        quantity,
+                        exposed: isExposed,
+                        notExposed: isNotExposed
+                    });
+                    
+                    articlesHTML += `
+                    <tr>
+                        <td>${ean}</td>
+                        <td>${name}</td>
+                        <td>${quantity}</td>
+                        <td class="exposed-cell">
+                            <i class="fas ${isExposed ? 'fa-check-square exposed-check' : 'fa-square'} exposed-check" 
+                                data-row="${i}" data-type="exposed"></i>
+                        </td>
+                        <td class="exposed-cell">
+                            <i class="fas ${isNotExposed ? 'fa-check-square not-exposed-check' : 'fa-square'} not-exposed-check" 
+                                data-row="${i}" data-type="not-exposed"></i>
+                        </td>
+                    </tr>
+                    `;
+                }
+                
+                elements.articlesBody.innerHTML = articlesHTML || 
+                    '<tr><td colspan="5" class="no-data"><i class="fas fa-info-circle fa-2x mb-3"></i><h5>Nema artikala za prikaz</h5><p class="text-muted">Izabrana radnja nema artikle</p></td></tr>';
+                
+                // Omogući dugmad za čuvanje i preuzimanje
+                elements.saveBtn.disabled = false;
+                elements.downloadBtn.disabled = false;
+                
+                // Dodaj event listenere za checkmarkove
+                document.querySelectorAll('.exposed-check, .not-exposed-check').forEach(icon => {
+                    icon.addEventListener('click', handleStatusChange);
+                });
+                
+                // Ažuriraj brojače
+                updateCounts(state.articles.length, exposedCount, notExposedCount);
+                
+            } catch (error) {
+                console.error('Greška pri učitavanju artikala:', error);
+                alert('Došlo je do greške pri učitavanju artikala.');
+            }
+        }
+
+        function handleStatusChange(e) {
+            const icon = e.target;
+            const rowIndex = parseInt(icon.getAttribute('data-row'));
+            const statusType = icon.getAttribute('data-type');
+            
+            // Pronađi artikal u stanju
+            const article = state.articles.find(a => a.rowIndex === rowIndex);
+            if (!article) return;
+            
+            // Ažuriraj status
+            if (statusType === 'exposed') {
+                article.exposed = !article.exposed;
+                if (article.exposed) article.notExposed = false;
+                icon.classList.toggle('fa-check-square', article.exposed);
+                icon.classList.toggle('fa-square', !article.exposed);
+            } else {
+                article.notExposed = !article.notExposed;
+                if (article.notExposed) article.exposed = false;
+                icon.classList.toggle('fa-check-square', article.notExposed);
+                icon.classList.toggle('fa-square', !article.notExposed);
+            }
+            
+            // Ažuriraj drugačiju ikonicu ako je potrebno
+            const otherType = statusType === 'exposed' ? 'not-exposed' : 'exposed';
+            const otherIcon = document.querySelector(`.${otherType}-check[data-row="${rowIndex}"]`);
+            if (otherIcon) {
+                otherIcon.classList.toggle('fa-check-square', false);
+                otherIcon.classList.toggle('fa-square', true);
+            }
+            
+            // Ažuriraj brojače
+            updateCounts(
+                state.articles.length,
+                state.articles.filter(a => a.exposed).length,
+                state.articles.filter(a => a.notExposed).length
+            );
+        }
+
+        function updateCounts(total, exposed, notExposed) {
+            elements.totalArticles.textContent = total;
+            elements.exposedCount.textContent = exposed;
+            elements.notExposedCount.textContent = notExposed;
+            elements.totalChanged.textContent = exposed + notExposed;
+            
+            // Ažuriraj stanje za kasnije korišćenje
+            state.exposedCount = exposed;
+            state.notExposedCount = notExposed;
+        }
+
+        function saveChanges() {
+            // U realnoj aplikaciji, ovde bi se ažurirao Excel fajl
+            // sa promenama iz state.articles
+            
+            // Simulacija uspešnog čuvanja
+            elements.modalExposed.textContent = state.exposedCount;
+            elements.modalNotExposed.textContent = state.notExposedCount;
+            elements.modalTotal.textContent = state.exposedCount + state.notExposedCount;
+            
+            const modal = new bootstrap.Modal(document.getElementById('successModal'));
+            modal.show();
+            
+            // U realnoj aplikaciji, ovde bi se ažurirao state.fileData
+            // sa promenama i omogućilo preuzimanje
+        }
+
+        function downloadFile() {
+            // U realnoj aplikaciji, ovde bi se preuzimao ažurirani fajl
+            alert(`Fajl "${state.fileName}" je spreman za preuzimanje. U realnoj aplikaciji, ovde bi se preuzimao ažurirani fajl.`);
+        }
+
+        function resetApp() {
+            state.workbook = null;
+            state.sheet = null;
+            state.store = null;
+            state.storeCol = null;
+            state.articles = [];
+            state.fileName = '';
+            state.fileData = null;
+            
+            elements.fileInput.value = '';
+            elements.fileInfo.style.display = 'none';
+            elements.sheetSelect.innerHTML = '<option value="">Izaberite radni list</option>';
+            elements.sheetSelect.disabled = true;
+            elements.storeSelect.innerHTML = '<option value="">Izaberite radnju</option>';
+            elements.storeSelect.disabled = true;
+            elements.articlesBody.innerHTML = '<tr><td colspan="5" class="no-data"><i class="fas fa-info-circle fa-2x mb-3"></i><h5>Nema podataka za prikaz</h5><p class="text-muted">Učitajte Excel fajl i izaberite radnju</p></td></tr>';
+            elements.saveBtn.disabled = true;
+            elements.downloadBtn.disabled = true;
+            updateCounts(0, 0, 0);
+        }
+
+        // Generisanje demo podataka za prikaz
+        function generateDemoData() {
+            const demoArticles = [];
+            for (let i = 1; i <= 12; i++) {
+                demoArticles.push({
+                    ean: `123456789012${i}`,
+                    name: `Artikal ${i}`,
+                    quantity: Math.floor(Math.random() * 100) + 1,
+                    exposed: i % 3 === 0,
+                    notExposed: i % 5 === 0
+                });
+            }
+            return demoArticles;
+        }
+    </script>
+</body>
+</html>
