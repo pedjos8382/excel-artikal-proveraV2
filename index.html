@@ -156,11 +156,23 @@
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         }
+        .btn-reset {
+            background: linear-gradient(90deg, #ff9a9e, #fad0c4);
+            border: none;
+            padding: 10px 25px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .btn-reset:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
         .action-buttons {
             display: flex;
             justify-content: center;
             gap: 15px;
             margin-top: 20px;
+            flex-wrap: wrap;
         }
         .stats-card {
             background: linear-gradient(120deg, #a1c4fd 0%, #c2e9fb 100%);
@@ -208,6 +220,13 @@
             background-color: rgba(220, 53, 69, 0.2);
             color: #721c24;
         }
+        .reset-info {
+            background: linear-gradient(120deg, #ffecd2 0%, #fcb69f 100%);
+            border-radius: 8px;
+            padding: 10px 15px;
+            margin-top: 15px;
+            font-size: 0.85rem;
+        }
     </style>
 </head>
 <body>
@@ -242,6 +261,9 @@
                         <button class="btn btn-sm btn-outline-danger" id="clear-file">
                             <i class="fas fa-times me-1"></i>Obriši
                         </button>
+                    </div>
+                    <div class="reset-info mt-2">
+                        <i class="fas fa-info-circle me-2"></i>Za početak novog meseca, koristite "Resetuj sve promene"
                     </div>
                 </div>
             </div>
@@ -314,6 +336,9 @@
                             <button class="btn btn-download" id="download-btn" disabled>
                                 <i class="fas fa-download me-2"></i>Preuzmi fajl
                             </button>
+                            <button class="btn btn-reset" id="reset-btn" disabled>
+                                <i class="fas fa-undo me-2"></i>Resetuj sve promene
+                            </button>
                         </div>
                     </div>
                     
@@ -370,6 +395,28 @@
         </div>
     </div>
 
+    <!-- Modal za resetovanje -->
+    <div class="modal fade" id="resetModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Resetovanje promena</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Da li ste sigurni da želite da resetujete sve promene?</p>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-info-circle me-2"></i>Ova akcija će poništiti sve vaše izmene i vratiti fajl u početno stanje. Ovo je korisno kada počinjete novi mesec.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Otkaži</button>
+                    <button type="button" class="btn btn-warning" id="confirm-reset">Resetuj sve</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Stanje aplikacije
@@ -382,7 +429,8 @@
             fileName: '',
             fileData: null,
             exposedCount: 0,
-            notExposedCount: 0
+            notExposedCount: 0,
+            originalData: null // Čuva originalno stanje pre izmena
         };
 
         // DOM Elementi
@@ -399,13 +447,15 @@
             articlesBody: document.getElementById('articles-body'),
             saveBtn: document.getElementById('save-btn'),
             downloadBtn: document.getElementById('download-btn'),
+            resetBtn: document.getElementById('reset-btn'),
             totalArticles: document.getElementById('total-articles'),
             exposedCount: document.getElementById('exposed-count'),
             notExposedCount: document.getElementById('not-exposed-count'),
             totalChanged: document.getElementById('total-changed'),
             modalExposed: document.getElementById('modal-exposed'),
             modalNotExposed: document.getElementById('modal-not-exposed'),
-            modalTotal: document.getElementById('modal-total')
+            modalTotal: document.getElementById('modal-total'),
+            confirmReset: document.getElementById('confirm-reset')
         };
 
         // Inicijalizacija
@@ -418,6 +468,12 @@
             elements.storeSelect.addEventListener('change', handleStoreSelect);
             elements.saveBtn.addEventListener('click', saveChanges);
             elements.downloadBtn.addEventListener('click', downloadFile);
+            elements.resetBtn.addEventListener('click', () => {
+                // Prikaži modal za potvrdu resetovanja
+                const modal = new bootstrap.Modal(document.getElementById('resetModal'));
+                modal.show();
+            });
+            elements.confirmReset.addEventListener('click', resetChanges);
             
             // Drag and drop funkcionalnost
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -481,6 +537,9 @@
                     state.fileName = file.name;
                     state.fileData = data;
                     
+                    // Sačuvaj originalne podatke za resetovanje
+                    state.originalData = data;
+                    
                     // Prikaz informacija o fajlu
                     elements.fileName.textContent = file.name;
                     elements.fileSize.textContent = Math.round(file.size / 1024);
@@ -518,6 +577,7 @@
             elements.articlesBody.innerHTML = '<tr><td colspan="5" class="no-data"><i class="fas fa-info-circle fa-2x mb-3"></i><h5>Nema podataka za prikaz</h5><p class="text-muted">Izaberite radni list i radnju</p></td></tr>';
             elements.saveBtn.disabled = true;
             elements.downloadBtn.disabled = true;
+            elements.resetBtn.disabled = true;
             updateCounts(0, 0, 0);
         }
 
@@ -632,6 +692,7 @@
                 // Omogući dugmad za čuvanje i preuzimanje
                 elements.saveBtn.disabled = false;
                 elements.downloadBtn.disabled = false;
+                elements.resetBtn.disabled = false;
                 
                 // Dodaj event listenere za checkmarkove
                 document.querySelectorAll('.exposed-check, .not-exposed-check').forEach(icon => {
@@ -717,6 +778,58 @@
             alert(`Fajl "${state.fileName}" je spreman za preuzimanje. U realnoj aplikaciji, ovde bi se preuzimao ažurirani fajl.`);
         }
 
+        // Resetuje sve promene na originalno stanje
+        function resetChanges() {
+            if (!state.originalData) {
+                alert('Nema originalnih podataka za resetovanje');
+                return;
+            }
+            
+            try {
+                // Zatvori reset modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('resetModal'));
+                if (modal) modal.hide();
+                
+                // Resetuj workbook na originalno stanje
+                state.workbook = XLSX.read(state.originalData, {type: 'array'});
+                
+                // Ponovo učitaj trenutno selektovani sheet
+                const currentSheet = elements.sheetSelect.value;
+                const currentStore = elements.storeSelect.value;
+                
+                if (currentSheet) {
+                    state.sheet = state.workbook.Sheets[currentSheet];
+                    
+                    // Ponovo učitaj radnje i artikle
+                    const jsonData = XLSX.utils.sheet_to_json(state.sheet, {header: 1});
+                    const headers = jsonData[0] || [];
+                    const stores = [];
+                    for (let i = 3; i < headers.length; i++) {
+                        if (headers[i]) stores.push(headers[i]);
+                    }
+                    
+                    // Ponovo popuni store select
+                    populateStoreSelect(stores);
+                    
+                    // Postavi prethodno selektovanu radnju
+                    if (currentStore && stores.includes(currentStore)) {
+                        elements.storeSelect.value = currentStore;
+                        
+                        // Daj vremena da se DOM ažurira
+                        setTimeout(() => {
+                            handleStoreSelect();
+                        }, 100);
+                    }
+                }
+                
+                alert('Sve promene su resetovane! Fajl je vraćen na originalno stanje.');
+                
+            } catch (error) {
+                console.error('Greška pri resetovanju:', error);
+                alert('Došlo je do greške pri resetovanju promena.');
+            }
+        }
+
         function resetApp() {
             state.workbook = null;
             state.sheet = null;
@@ -725,6 +838,7 @@
             state.articles = [];
             state.fileName = '';
             state.fileData = null;
+            state.originalData = null;
             
             elements.fileInput.value = '';
             elements.fileInfo.style.display = 'none';
@@ -735,22 +849,8 @@
             elements.articlesBody.innerHTML = '<tr><td colspan="5" class="no-data"><i class="fas fa-info-circle fa-2x mb-3"></i><h5>Nema podataka za prikaz</h5><p class="text-muted">Učitajte Excel fajl i izaberite radnju</p></td></tr>';
             elements.saveBtn.disabled = true;
             elements.downloadBtn.disabled = true;
+            elements.resetBtn.disabled = true;
             updateCounts(0, 0, 0);
-        }
-
-        // Generisanje demo podataka za prikaz
-        function generateDemoData() {
-            const demoArticles = [];
-            for (let i = 1; i <= 12; i++) {
-                demoArticles.push({
-                    ean: `123456789012${i}`,
-                    name: `Artikal ${i}`,
-                    quantity: Math.floor(Math.random() * 100) + 1,
-                    exposed: i % 3 === 0,
-                    notExposed: i % 5 === 0
-                });
-            }
-            return demoArticles;
         }
     </script>
 </body>
